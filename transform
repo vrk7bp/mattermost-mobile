@@ -1,0 +1,36 @@
+if image._prev
+	image._prev._next = null
+
+if image._next
+	image._next._prev = null
+
+let parent = image.parent
+while parent.type != 'document'
+	
+
+image._parent = null
+image._prev = null
+image._next = null
+
+
+
+
+
+
+let continued = null
+
+let node = image
+while node.parent && node != 'document'
+	parent = node.parent
+
+	if node.next
+		let parentCopy = copyNodeWithoutChildrenOrSiblings(node.parent)
+		parentCopy._firstChild = node.next
+		parentCopy._lastChild = node.parent._lastChild
+
+		parentCopy._next = parent.next
+		parentCopy._next._prev = parentCopy
+
+	parent._next = null
+
+	node.parent._lastChild = node.prev
