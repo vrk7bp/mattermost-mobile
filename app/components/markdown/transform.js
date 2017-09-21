@@ -13,11 +13,13 @@ export function addListItemIndices(ast) {
             const node = e.node;
 
             if (node.type === 'list') {
-            let i = node.startAt || 0;
-            for (let child = node.firstChild; child; child = child.next) {
-                child.index = 1;
+                let i = node.listStart || 1; // List indices match what would be displayed in the UI
 
-                i += 1;
+                for (let child = node.firstChild; child; child = child.next) {
+                    child.index = i;
+
+                    i += 1;
+                }
             }
         }
     }
@@ -34,151 +36,112 @@ export function pullOutImages(ast) {
         while (node && node !== block) {
             // TODO look for images
             if (node.type === 'image') {
-                const image = current;
+                const image = node;
 
-                // if (current.parent.parent !== block && current.next !== null && current.last !== null) {
-                    let parent = image.parent;
-                    let prev = image.prev;
-                    let next = image.next;
+                let parent = image.parent;
+                let prev = image.prev;
+                let next = image.next;
 
-                    // Remove image from its siblings
-                    if (prev) {
-                        prev._next = next;
-                    }
-                    if (next) {
-                        next._prev = prev;
-                    }
+                // Remove image from its siblings
+                if (prev) {
+                    prev._next = next;
+                }
+                if (next) {
+                    next._prev = prev;
+                }
 
-                    // And from its parents
+                // And from its parents
+                if (parent._firstChild === image) {
+                    // image was the first child (ie prev is null), so the next sibling is now the first child
+                    parent._firstChild = next;
+                }
+                if (parent._lastChild === image) {
+                    // image was the last child (ie next is null), so the previous sibling is now the last child
+                    parent._lastChild = prev;
+                }
 
-                    if (parent._firstChild === image) {
-                        // image was the first child (ie prev is null), so the next sibling is now the first child
-                        parent._firstChild = next;
-                    }
-                    if (parent._lastChild === image) {
-                        // image was the last child (ie next is null), so the previous sibling is now the last child
-                        parent._lastChild = prev;
-                    }
+                // Split the tree between the previous and next siblings, where the image would've been
+                while (parent && parent.type !== 'document') {
+                    // We only need to split the parent if there's anything on the right of where we're splitting
+                    // in the current branch
+                    let parentCopy = null;
 
-                    // Split the tree between the previous and next siblings, where the image would've been
-                    while (parent && parent.type !== 'document') {
-                        // We only need to split the parent if there's anything on the right of where we're splitting
-                        // in the current branch
-                        let parentCopy = null;
+                    // Split if we have children to the right of the split (next) or if we have any siblings to the
+                    // right of the parent (parent.next)
+                    if (next || parent.next) {
+                        parentCopy = copyNodeWithoutNeighbors(parent);
 
-                        // Split if we have children to the right of the split (next) or if we have any siblings to the
-                        // right of the parent (parent.next)
-                        if (next || parent.next) {
-                            parentCopy = copyNodeWithoutNeighbors(parent);
+                        // Set an additional flag so we know not to re-render things like bullet points
+                        parentCopy.continue = true;
 
-                            // Set an additional flag so we know not to re-render things like bullet points
-                            parentCopy.continue = true;
+                        // Re-assign the children to the right of the split to belong to the copy
+                        parentCopy._firstChild = next;
+                        parentCopy._lastChild = getLastSibling(next);
 
-                            // Re-assign the children to the right of the split to belong to the copy
-                            parentCopy._firstChild = next;
-                            parentCopy._lastChild = parent.lastChild;
+                        if (parent._firstChild === next) {
+                            parent._firstChild = null;
+                            parent._lastChild = null;
+                        } else {
                             parent._lastChild = prev;
-
-                            // And re-assign the parent of all of those to be the copy
-                            for (let child = parentCopy.firstChild; child; child = child.next) {
-                                child._parent = parentCopy;
-                            }
-
-                            // Insert the copy as parent's next sibling
-                            if (parent.next) {
-                                parent.next._prev = parentCopy;
-                                parentCopy._next = parent.next;
-                                parent._next = parentCopy;
-                            } else /* if (parent.parent.lastChild === parent) */ {
-                                // Since parent has no next sibling, parent is the last child of its parent, so
-                                // we need to set the copy as the last child
-                                parent.parent.lastChild = parentCopy;
-                            }
                         }
 
-                        // Change prev and next to no longer be siblings
-                        if (prev) {
-                            prev._next = null;
+                        // And re-assign the parent of all of those to be the copy
+                        for (let child = parentCopy.firstChild; child; child = child.next) {
+                            child._parent = parentCopy;
                         }
 
-                        if (next) {
-                            next._prev = null;
+                        // Insert the copy as parent's next sibling
+                        if (parent.next) {
+                            parent.next._prev = parentCopy;
+                            parentCopy._next = parent.next;
+                            parent._next = parentCopy;
+                        } else /* if (parent.parent.lastChild === parent) */ {
+                            // Since parent has no next sibling, parent is the last child of its parent, so
+                            // we need to set the copy as the last child
+                            parent.parent.lastChild = parentCopy;
                         }
-
-                        // Move up the tree
-                        next = parentCopy;
-                        prev = parent;
-                        parent = parent.parent;
                     }
 
-                    // Re-insert the image now that we have a tree split down to the root with the image's ancestors.
-                    // Note that parent is the root node, prev is the ancestor of image, and next is the ancestor of the copy
+                    // Change prev and next to no longer be siblings
+                    if (prev) {
+                        prev._next = null;
+                    }
 
-                    // Add image to its parent
-                    image._parent = parent;
                     if (next) {
-                        parent._lastChild = next;
-                    } else {
-                        // image is the last child of the root node now
-                        parent._lastChild = image;
+                        next._prev = null;
                     }
 
-                    // Add image to its siblings
-                    image._prev = prev;
-                    prev._next = image;
+                    // Move up the tree
+                    next = parentCopy;
+                    prev = parent;
+                    parent = parent.parent;
+                }
 
-                    image._next = next;
-                    if (next) {
-                        next._prev = image;
-                    }
+                // Re-insert the image now that we have a tree split down to the root with the image's ancestors.
+                // Note that parent is the root node, prev is the ancestor of image, and next is the ancestor of the copy
 
-                    // The copy still needs its parent set to the root node
-                    if (next) {
-                        next._parent = parent;
-                    }
+                // Add image to its parent
+                image._parent = parent;
+                if (next) {
+                    parent._lastChild = next;
+                } else {
+                    // image is the last child of the root node now
+                    parent._lastChild = image;
+                }
 
+                // Add image to its siblings
+                image._prev = prev;
+                prev._next = image;
 
-                    // Backtrack walker to parent
-                    // const image = current;
-                    // current = current.parent;
+                image._next = next;
+                if (next) {
+                    next._prev = image;
+                }
 
-                    // let next = image.next;
-
-                    // if (next && next !== block.next) {
-                    //     // This block has more children after the image, so we need to split the block
-                    //     // into two parts surrounding the image
-
-                    //     // Reconstruct the second half of the block from the deepest node, up
-                    //     next._prev = null;
-                    //     next.continue = true; // This field isn't part of Node, but it will be used to not render a new list bullet
-
-                    //     let continuedBlock = 
-
-                    //     while (next.parent && next.parent.type !== 'document') {
-                    //         next = next.parent;
-
-                    //         next._prev = null;
-                    //         next.continue = true;
-                    //     }
-
-                    //     // 
-
-                    //     block.next._prev = continuedBlock;
-                    //     block._next = continuedBlock;
-                    // }
-                    // let continuedBlock = new Node();
-
-                    // // Unlink image from parent
-                    // image.unlink();
-
-                    // // Re-insert the image in its own paragraph
-                    // const imageBlock = new Node('paragraph');
-                    // imageBlock.appendChild(image);
-
-                    // block.insertAfter(imageBlock); // TODO
-                // } else {
-                //     console.log('found image at top level');
-                // }
+                // The copy still needs its parent set to the root node
+                if (next) {
+                    next._parent = parent;
+                }
             }
 
             // Walk through tree to next node
@@ -215,19 +178,16 @@ function copyNodeWithoutNeighbors(node) {
     return copy;
 }
 
-// function findNext(node) {
-//     let current = node;
+// Gets the last sibling of a given node
+function getLastSibling(node) {
+    let sibling = node;
 
-//     while (current) {
-//         if (current.next) {
-//             return current.next;
-//         }
+    while (sibling.next) {
+        sibling = sibling.next;
+    }
 
-//         current = current.parent;
-//     }
-
-//     return null;
-// }
+    return sibling;
+}
 
 export function verifyAst(node) {
     if (node.prev && node.prev.next !== node) {
@@ -293,7 +253,7 @@ function nodeToString(node) {
 
 const ignoredKeys = {_sourcepos: true, _lastLineBlank: true, _open: true, _string_content: true, _info: true, _isFenced: true, _fenceChar: true, _fenceLength: true, _fenceOffset: true, _onEnter: true, _onExit: true};
 export function astToJson(node, visited = [], indent = '') {
-    let out = indent + '{';
+    let out = '{';
 
     visited = [...visited];
     visited.push(node);
@@ -327,31 +287,12 @@ export function astToJson(node, visited = [], indent = '') {
     }
 
     if (keys.length > 0) {
-        out += '\n';
+        out += '\n' + indent;
     }
 
-    out += indent + '}';
+    out += '}';
 
     return out;
-
-    // const cache = [];
-    // const out = JSON.stringify(node, function(key, value) {
-    //     if (key === 'listData') {
-    //         return 'LIST_DATA';
-    //     } else if (typeof value === 'object' && value !== null) {
-    //         if (cache.indexOf(value) !== -1) {
-    //             // Circular reference found, discard key
-    //             return '[Circular]';
-    //         }
-    //         // Store value in our collection
-    //         cache.push(value);
-    //     }
-    //     return value;
-    // }, 2);
-
-    // // cache = null; // Enable garbage collection
-
-    // return out;
 }
 
 // Converts an AST represented as a JavaScript object into a full Commonmark-compatitle AST.
