@@ -35,7 +35,7 @@ export function pullOutImages(ast) {
 
         while (node && node !== block) {
             // TODO look for images
-            if (node.type === 'image') {
+            if (node.type === 'image' && node.parent.type !== 'document') {
                 const image = node;
 
                 let parent = image.parent;
@@ -182,7 +182,7 @@ function copyNodeWithoutNeighbors(node) {
 function getLastSibling(node) {
     let sibling = node;
 
-    while (sibling.next) {
+    while (sibling && sibling.next) {
         sibling = sibling.next;
     }
 
@@ -216,6 +216,10 @@ export function verifyAst(node) {
 }
 
 export function astToString(node, indent = '') {
+    if (!node) {
+        return '';
+    }
+
     let out = '';
 
     out += indent + nodeToString(node) + '\n';
@@ -228,7 +232,7 @@ export function astToString(node, indent = '') {
 }
 
 const neighbours = ['parent', 'prev', 'next', 'firstChild', 'lastChild'];
-const importantFields = ['literal', 'destination', 'title', 'level', 'listType', 'listTight', 'listDelimmiter', 'mentionName', 'channelName', 'emojiName', 'continue'];
+const importantFields = ['literal', 'destination', 'title', 'level', 'listType', 'listTight', 'listDelimiter', 'mentionName', 'channelName', 'emojiName', 'continue', 'index'];
 function nodeToString(node) {
     let out = node.type;
 
