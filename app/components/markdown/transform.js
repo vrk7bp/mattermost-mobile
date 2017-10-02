@@ -1,7 +1,7 @@
 // Copyright (c) 2017-present Mattermost, Inc. All Rights Reserved.
 // See License.txt for license information.
 
-import {Node} from 'commonmark';
+/* eslint-disable no-underscore-dangle */
 
 // Add indices to the items of every list
 export function addListItemIndices(ast) {
@@ -110,6 +110,11 @@ export function pullOutImages(ast) {
                         next._prev = null;
                     }
 
+                    // This image is part of a link so include the destination along with it
+                    if (parent.type === 'link') {
+                        image.destination = parent.destination;
+                    }
+
                     // Move up the tree
                     next = parentCopy || parent.next;
                     prev = parent;
@@ -163,7 +168,7 @@ export function pullOutImages(ast) {
 // Copies a Node without its parent, children, or siblings
 function copyNodeWithoutNeighbors(node) {
     // commonmark uses classes so it takes a bit of work to copy them
-    const copy = Object.assign(Object.create(Object.getPrototypeOf(node)), node);
+    const copy = Object.assign(Object.create(Reflect.getPrototypeOf(node)), node);
 
     copy._parent = null;
     copy._firstChild = null;
@@ -186,151 +191,4 @@ function getLastSibling(node) {
     }
 
     return sibling;
-}
-
-export function verifyAst(node) {
-    if (node.prev && node.prev.next !== node) {
-        console.error('node is not linked properly to prev');
-    }
-
-    if (node.next && node.next.prev !== node) {
-        console.error('node is not linked properly to prev');
-    }
-
-    for (let child = node.firstChild; child; child = child.next) {
-        if (child.parent !== node) {
-            console.error('node is not linked properly to child');
-        }
-    }
-
-    if (node.firstChild && node.firstChild.prev) {
-        console.error('node\'s first child has previous sibling');
-    }
-
-    if (node.lastChild && node.lastChild.next) {
-        console.error('node\'s last child has next sibling');
-    }
-
-    return true;
-}
-
-export function astToString(node, indent = '') {
-    if (!node) {
-        return '';
-    }
-
-    let out = '';
-
-    out += indent + nodeToString(node) + '\n';
-
-    for (let child = node.firstChild; child !== null; child = child.next) {
-        out += astToString(child, indent + '  ');
-    }
-
-    return out;
-}
-
-const neighbours = ['parent', 'prev', 'next', 'firstChild', 'lastChild'];
-const importantFields = ['literal', 'destination', 'title', 'level', 'listType', 'listTight', 'listDelimiter', 'mentionName', 'channelName', 'emojiName', 'continue', 'index'];
-function nodeToString(node) {
-    let out = node.type;
-
-    for (const neighbour of neighbours) {
-        if (node[neighbour]) {
-            out += ' ' + neighbour + '=`' + node[neighbour].type;
-            if (node[neighbour].type === 'text') {
-                out += ':' + node[neighbour].literal;
-            }
-            out += '`';
-        }
-    }
-
-    for (const field of importantFields) {
-        if (node[field]) {
-            out += ' ' + field + '=`' + node[field] + '`';
-        }
-    }
-
-    return out;
-}
-
-const ignoredKeys = {_sourcepos: true, _lastLineBlank: true, _open: true, _string_content: true, _info: true, _isFenced: true, _fenceChar: true, _fenceLength: true, _fenceOffset: true, _onEnter: true, _onExit: true};
-export function astToJson(node, visited = [], indent = '') {
-    let out = '{';
-
-    visited = [...visited];
-    visited.push(node);
-
-    const keys = Object.keys(node).filter((key) => !ignoredKeys[key]);
-    if (keys.length > 0) {
-        out += '\n';
-    }
-
-    for (const [i, key] of keys.entries()) {
-        out += indent + '  "' + key + '":'
-
-        const value = node[key];
-        if (visited.indexOf(value) !== -1) {
-            out += '[Circular]'
-        } else if (value === null) {
-            out += 'null';
-        } else if (typeof value === 'number') {
-            out += value;
-        } else if (typeof value === 'string') {
-            out += '"' + value + '"';
-        } else if (typeof value === 'boolean') {
-            out += String(value);
-        } else if (typeof value === 'object') {
-            out += astToJson(value, visited, indent + '  ');
-        }
-
-        if (i !== keys.length - 1) {
-            out += ',\n';
-        }
-    }
-
-    if (keys.length > 0) {
-        out += '\n' + indent;
-    }
-
-    out += '}';
-
-    return out;
-}
-
-// Converts an AST represented as a JavaScript object into a full Commonmark-compatitle AST.
-// This function is intended for use while testing. An example of input would be:
-// {
-//     type: 'document',
-//     children: [{
-//         type: 'heading',
-//         level: 2,
-//         children: [{
-//             type: 'text',
-//             literal: 'This is a heading'
-//         }]
-//     }, {
-//         type: 'paragraph',
-//         children: [{
-//             type: 'text',
-//             literal: 'This is a paragraph'
-//         }]
-//     }]
-// }
-export function makeAst(input) {
-    const {type, children, ...other} = input;
-
-    const node = new Node(type);
-
-    for (const key of Object.keys(other)) {
-        node[key] = other[key];
-    }
-
-    if (children) {
-        for (const child of children) {
-            node.appendChild(makeAst(child));
-        }
-    }
-
-    return node;
 }
