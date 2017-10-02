@@ -34,7 +34,6 @@ export function pullOutImages(ast) {
         let cameFromChild = false;
 
         while (node && node !== block) {
-            // TODO look for images
             if (node.type === 'image' && node.parent.type !== 'document') {
                 const image = node;
 
@@ -68,7 +67,7 @@ export function pullOutImages(ast) {
 
                     // Split if we have children to the right of the split (next) or if we have any siblings to the
                     // right of the parent (parent.next)
-                    if (next || parent.next) {
+                    if (next) {
                         parentCopy = copyNodeWithoutNeighbors(parent);
 
                         // Set an additional flag so we know not to re-render things like bullet points
@@ -112,7 +111,7 @@ export function pullOutImages(ast) {
                     }
 
                     // Move up the tree
-                    next = parentCopy;
+                    next = parentCopy || parent.next;
                     prev = parent;
                     parent = parent.parent;
                 }
