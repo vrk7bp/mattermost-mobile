@@ -59,7 +59,7 @@ export default class About extends PureComponent {
         let subTitle = (
             <FormattedText
                 id='about.teamEditionSt'
-                defaultMessage='All your team communication in one place, instantly searchable and accessible anywhere.'
+                defaultMessage='Premier Team Based Care Communication Platform.'
                 style={style.subtitle}
             />
         );
@@ -68,7 +68,7 @@ export default class About extends PureComponent {
             <View style={style.learnContainer}>
                 <FormattedText
                     id='about.teamEditionLearn'
-                    defaultMessage='Join the Mattermost community at '
+                    defaultMessage='Join the Scrybe community at '
                     style={style.learn}
                 />
                 <TouchableOpacity
@@ -211,7 +211,7 @@ export default class About extends PureComponent {
                         {!MATTERMOST_BUNDLE_IDS.includes(DeviceInfo.getBundleId()) &&
                             <FormattedText
                                 id='mobile.about.powered_by'
-                                defaultMessage='{site} is powered by Mattermost'
+                                defaultMessage='{site} is powered by Scrybe'
                                 style={style.footerText}
                                 values={{
                                     site: this.props.config.SiteName
@@ -220,7 +220,7 @@ export default class About extends PureComponent {
                         }
                         <FormattedText
                             id='mobile.about.copyright'
-                            defaultMessage='Copyright 2015-{currentYear} Mattermost, Inc. All rights reserved'
+                            defaultMessage='Copyright 2016-{currentYear} Simulated Aptitude LLC. All rights reserved'
                             style={style.footerText}
                             values={{
                                 currentYear: new Date().getFullYear()
@@ -230,7 +230,7 @@ export default class About extends PureComponent {
                             <View style={style.footerGroup}>
                                 <FormattedText
                                     id='mobile.notice_text'
-                                    defaultMessage='Mattermost is made possible by the open source software used in our {platform} and {mobile}.'
+                                    defaultMessage='Scrybe is made possible by the open source software used in our {platform} and {mobile}.'
                                     style={style.footerText}
                                     values={{
                                         platform: (

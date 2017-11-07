@@ -251,7 +251,7 @@ class LoginOptions extends PureComponent {
                 <FormattedText
                     style={GlobalStyles.subheader}
                     id='web.root.signup_info'
-                    defaultMessage='All team communication in one place, searchable and accessible anywhere'
+                    defaultMessage='The Premier Team Based Care Communication Platform'
                 />
                 <FormattedText
                     style={[GlobalStyles.subheader, {fontWeight: 'bold', marginTop: 10}]}
